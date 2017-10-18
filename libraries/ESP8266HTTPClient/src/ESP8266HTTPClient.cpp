@@ -1013,6 +1013,7 @@ int HTTPClient::writeToStreamDataBlock(Stream * stream, int size)
     int buff_size = HTTP_TCP_BUFFER_SIZE;
     int len = size;
     int bytesWritten = 0;
+    long op_start_time = millis();
 
     // if possible create smaller buffer then HTTP_TCP_BUFFER_SIZE
     if((len > 0) && (len < HTTP_TCP_BUFFER_SIZE)) {
@@ -1024,7 +1025,7 @@ int HTTPClient::writeToStreamDataBlock(Stream * stream, int size)
 
     if(buff) {
         // read all data from server
-        while(connected() && (len > 0 || len == -1)) {
+        while(connected() && (len > 0 || len == -1) && ((millis() - op_start_time) < _tcpTimeout)) {
 
             // get available data size
             size_t sizeAvailable = _tcp->available();
@@ -1095,6 +1096,10 @@ int HTTPClient::writeToStreamDataBlock(Stream * stream, int size)
             } else {
                 delay(1);
             }
+        }
+
+        if (connected() && (len > 0 || len == -1) && ((millis() - op_start_time) >= _tcpTimeout)) {
+            Serial.printf("[HTTP-Client][writeToStreamDataBlock] read timed out (written: %d).\n", bytesWritten);
         }
 
         free(buff);
